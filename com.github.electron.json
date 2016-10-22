@@ -1,7 +1,8 @@
 {
-    "app-id": "com.github.electron",
+    "id": "com.github.electron",
+    "build-runtime": true,
     "runtime": "org.gnome.Platform",
-    "runtime-version": "master",
+    "runtime-version": "3.20",
     "sdk": "org.gnome.Sdk",
     "command": "electron",
     "tags": ["nightly"],
@@ -33,20 +34,88 @@
                 "/man", "/share/man", "/share/gtk-doc",
                 "*.la", "*.a"],
     "modules": [
+        {
+            "name": "libpci",
+            "no-autogen": true,
+            "make-args": ["PREFIX=/usr"],
+            "make-install-args": ["PREFIX=/usr", "install-lib"],
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "git://git.kernel.org/pub/scm/utils/pciutils/pciutils.git",
+                    "branch": "v3.5.2"
+                }
+            ],
+            "disabled": [
+        {
+            "name": "ORBit2",
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://git.gnome.org/browse/ORBit2",
+                    "branch": "ORBIT2_2_14_19"
+                }
+            ]
+        },
+        {
+            "name": "gconf",
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://git.gnome.org/browse/gconf",
+                    "branch": "3.2.5"
+                }
+            ]
+        }
+]},
+        {
+            "name": "alsa-lib",
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "git://git.alsa-project.org/alsa-lib.git",
+                    "branch": "v1.1.2"
+                },
+                {
+                    "type": "script",
+                    "commands": ["GITCOMPILE_NO_MAKE=true bash gitcompile"],
+                    "dest-filename": "autogen.sh"
+                }
+            ]
+        },
       {
           "name": "electron-gtk3",
           "no-autogen": true,
-          "make-install-args": ["prefix=/app"],
+          "make-install-args": ["prefix=/usr"],
           "sources": [
               {
                   "type": "git",
                   "url": "https://github.com/nikolowry/electron-gtk3.git"
               },
               {
+                  "type": "shell",
+                  "commands": [
+                      "rm -rf electron",
+                      "git submodule update --init --recursive --checkout --force"
+                  ]
+              },
+              {
                   "type": "patch",
                   "path": "electron-makefile.patch"
+              },
+              {
+                  "comment": "version is in electron/vendor/brightray/vendor/libchromiumcontent/VERSION",
+                  "type": "file",
+                  "url": "https://github.com/zcbenz/chromium-source-tarball/releases/download/51.0.2704.106/chromium-51.0.2704.106.tar.xz",
+                  "sha256": "0471952a78bc47d742f85ee2243882e2b7b981217dfea9260aa5670f5fef8e47",
+                  "dest": "electron/vendor/brightray/vendor/libchromiumcontent/"
+              },
+              {
+                  "type": "file",
+                  "url": "https://commondatastorage.googleapis.com/chromium-browser-clang/Linux_x64/clang-264915-1.tgz",
+                  "dest": "electron/vendor/brightray/vendor/libchromiumcontent/vendor/chromium/src/dl/commondatastorage.googleapis.com/chromium-browser-clang/Linux_x64/",
+                  "sha256": "02270e30fdf64540efb960cd5656a8024d0f1108f1708ce7287acaef68d40cf1"
               }
-
           ]
       }
     ]

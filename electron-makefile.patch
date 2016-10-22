@@ -1,50 +1,109 @@
-From a05fe0a02b275ac641b80ecda72cdfbaf93b149b Mon Sep 17 00:00:00 2001
-From: Vadim Rutkovsky <vrutkovs@redhat.com>
-Date: Thu, 16 Jun 2016 22:50:41 +0200
-Subject: [PATCH] Add Makefile
-
----
- Makefile | 10 ++++++++++
- build    |  4 +++-
- 2 files changed, 13 insertions(+), 1 deletion(-)
- create mode 100644 Makefile
-
 diff --git a/Makefile b/Makefile
 new file mode 100644
-index 0000000..67a763a
+index 0000000..3164cf2
 --- /dev/null
 +++ b/Makefile
-@@ -0,0 +1,10 @@
+@@ -0,0 +1,13 @@
 +all: build
 +
 +build:
-+	git submodule sync --recursive
++	: cert-sync /etc/ssl/certs/ca-certificates.crt
++	: rm -rf electron
++	: git submodule update --init --recursive --checkout --force
++	cat electron/vendor/brightray/vendor/libchromiumcontent/.git
 +	./build
 +
 +install:
-+	echo "nope"
++	echo "nope" && false
 +
-+.PHONY: all build
++.PHONY: all build install
 diff --git a/build b/build
-index ae0907f..376fcfe 100755
+index 16a68a0..d47cd5c 100755
 --- a/build
 +++ b/build
 @@ -1,5 +1,7 @@
  #!/bin/sh
-
+ 
 +set -ex
 +
  #Valid flags
  flags=(
      '-t|--target_arch'
-@@ -28,7 +30,7 @@ libchromiumcontent_bootstrap() {
-
+@@ -23,18 +25,42 @@ sysPkgs="gtk+-3.0 wayland-protocols gl egl glib-2.0 x11 gdk-3.0
+ libchromiumcontent_bootstrap() {
+     #TODO update install-sysroot.py to use jessie
+     cd $CWD
+-    patch -N $LIBCHROMIUM_PATH/script/update \
+-        < patches/libchromiumcontent-update.patch
++    (
++        set +e
++        patch -N $LIBCHROMIUM_PATH/script/update \
++            < patches/libchromiumcontent-update.patch
++        [[ $? -le 1 ]] || exit $? # Skip already applied patch
++    )
+ 
      #Sync libchromiumcontent submodules
      cd $LIBCHROMIUM_PATH;
 -    python script/bootstrap;
 +    python script/bootstrap -v;
-
++
++    #sed -e "s|subprocess.call(\\[sys.executable, update\\])|subprocess.call([sys.executable, update, '--force-local-build'])|" \
++    #    -i script/update
+ 
      #Use_gtk3 to defines via sed
      sed -e "s|'use_gtk3': 1, ||" \
---
-2.5.5
+-        -e "s|'use_dbus': 1,|'use_dbus': 1, 'use_gtk3': 1, |" \
++        -e "s|'use_gconf': 0, ||" \
++        -e "s|'use_gnome_keyring': 0, ||" \
++        -e "s|'use_dbus': 1,|'use_dbus': 1, 'use_gtk3': 1, 'use_gconf': 0, 'use_gnome_keyring': 0, |" \
+         -i chromiumcontent/chromiumcontent.gypi
+ 
++    version="$(cat VERSION)"
++    if [[ -e "chromium-$version.tar.xz" ]]; then
++        mkdir -p vendor/chromium/src
++        tar xJf "chromium-$version.tar.xz" -C vendor/chromium/src --strip-components=1
++        echo "$version" >vendor/chromium/src/.version
++    fi
++
++    (
++        cd $CWD
++        set +e
++        patch -N $LIBCHROMIUM_PATH/vendor/chromium/src/tools/clang/scripts/update.py \
++            < patches/chromium-clang-update.patch
++        [[ $? -le 1 ]] || exit $? # Skip already applied patch
++    )
++
+     #Download src
+     python script/update -t $arch;
+ 
+diff --git a/patches/chromium-clang-update.patch b/patches/chromium-clang-update.patch
+new file mode 100644
+index 0000000..c33aa54
+--- /dev/null
++++ b/patches/chromium-clang-update.patch
+@@ -0,0 +1,25 @@
++--- /home/mildred/Projects/patchwork-electron/.flatpak-builder/build/electron-gtk3/electron/vendor/brightray/vendor/libchromiumcontent/vendor/chromium/src/tools/clang/scripts/update.py	2016-10-20 12:16:48.979780761 +0200
+++++ /home/mildred/Projects/patchwork-electron/.flatpak-builder/build/electron-gtk3/electron/vendor/brightray/vendor/libchromiumcontent/vendor/chromium/src/tools/clang/scripts/update.py	2016-10-20 12:28:54.440209794 +0200
++@@ -131,9 +131,19 @@
++ 
++ 
++ def DownloadAndUnpack(url, output_dir):
++-  with tempfile.TemporaryFile() as f:
++-    DownloadUrl(url, f)
++-    f.seek(0)
+++  dlpath = os.path.join(CHROMIUM_DIR, "dl",
+++      url.replace("http://", "").replace("https://", ""))
+++  sys.stdout.write('Looking for %s\n' % dlpath)
+++  if os.path.exists(dlpath):
+++    with open(dlpath, 'rb') as f:
+++      Extract(url, f, output_dir)
+++  else:
+++    with tempfile.TemporaryFile() as f:
+++      DownloadUrl(url, f)
+++      f.seek(0)
+++      Extract(url, f, output_dir)
+++
+++def Extract(url, f, output_dir):
++     EnsureDirExists(output_dir)
++     if url.endswith('.zip'):
++       zipfile.ZipFile(f).extractall(path=output_dir)
