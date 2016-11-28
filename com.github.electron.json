@@ -45,29 +45,8 @@
                     "url": "git://git.kernel.org/pub/scm/utils/pciutils/pciutils.git",
                     "branch": "v3.5.2"
                 }
-            ],
-            "disabled": [
-        {
-            "name": "ORBit2",
-            "sources": [
-                {
-                    "type": "git",
-                    "url": "https://git.gnome.org/browse/ORBit2",
-                    "branch": "ORBIT2_2_14_19"
-                }
             ]
         },
-        {
-            "name": "gconf",
-            "sources": [
-                {
-                    "type": "git",
-                    "url": "https://git.gnome.org/browse/gconf",
-                    "branch": "3.2.5"
-                }
-            ]
-        }
-]},
         {
             "name": "alsa-lib",
             "sources": [
